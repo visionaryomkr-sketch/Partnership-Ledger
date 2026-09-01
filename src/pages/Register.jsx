@@ -40,11 +40,17 @@ export default function Register() {
       return;
     }
 
+    if (phone.length !== 10) {
+      setError("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
     setLoading(true);
     try {
+      const formattedPhone = `+91 ${phone}`;
       const data = await signUp(email, password, {
         full_name: nameToSave,
-        phone: phone.trim(),
+        phone: formattedPhone,
       });
       // If email confirmation is disabled in Supabase, session is created immediately
       if (data?.session) {
@@ -145,17 +151,32 @@ export default function Register() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone">Mobile Number</Label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <div className="flex items-center justify-between">
+            <Label htmlFor="phone">Mobile Number</Label>
+            {phone && (
+              <span className={`text-[11px] font-medium ${phone.length === 10 ? 'text-[#1B4332]' : 'text-[#9498A0]'}`}>
+                {phone.length}/10 digits
+              </span>
+            )}
+          </div>
+          <div className="relative flex items-center">
+            <div className="absolute left-3 flex items-center gap-1.5 text-muted-foreground pointer-events-none z-10">
+              <Phone className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold text-[#16181D] pl-1 border-r border-[#E8E6E1] pr-2">+91</span>
+            </div>
             <Input
               id="phone"
               type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
               autoComplete="tel"
-              placeholder="+91 98765 43210"
+              placeholder="98765 43210"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="pl-10 h-12"
+              onChange={(e) => {
+                const numericOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                setPhone(numericOnly);
+              }}
+              className="pl-20 h-12 tracking-wide font-medium"
               required
             />
           </div>
