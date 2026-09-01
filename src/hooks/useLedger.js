@@ -16,6 +16,7 @@ import {
   fetchDecisions,
   addDecision,
   updateDecisionVote,
+  deleteDecision,
   fetchAppSettings,
   fetchChangeLog,
   updateHourlyRate,
@@ -260,6 +261,27 @@ export function useVoteDecision() {
     onError: (err) => {
       toast({
         title: 'Error updating decision',
+        description: err.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useDeleteDecision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => deleteDecision(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['decisions'] });
+      toast({
+        title: 'Decision deleted',
+        description: 'The decision record has been permanently removed from the ledger.',
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: 'Error deleting decision',
         description: err.message,
         variant: 'destructive',
       });

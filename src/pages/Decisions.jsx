@@ -9,11 +9,18 @@ import {
   MessageSquare,
   UserCheck,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import PageHeader from "@/components/ledger/PageHeader";
 import SlideOver from "@/components/ledger/SlideOver";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDecisions, useAddDecision, useVoteDecision, usePartners } from "@/hooks/useLedger";
+import {
+  useDecisions,
+  useAddDecision,
+  useVoteDecision,
+  useDeleteDecision,
+  usePartners,
+} from "@/hooks/useLedger";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function Decisions() {
@@ -22,6 +29,7 @@ export default function Decisions() {
   const { data: partnersData } = usePartners();
   const addDecision = useAddDecision();
   const voteDecision = useVoteDecision();
+  const deleteDecision = useDeleteDecision();
 
   const entries = data || [];
   const partners = partnersData && partnersData.length > 0
@@ -195,32 +203,46 @@ export default function Decisions() {
                   </span>
                 </div>
 
-                {/* Overall Decision Status Tag */}
-                {isApproved ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F0EB] px-3 py-1 text-xs font-semibold text-[#1B4332] border border-[#B7DFCA]">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Approved (Unanimous 3/3)
-                  </span>
-                ) : isRejected ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF2F2] px-3 py-1 text-xs font-semibold text-[#B91C1C] border border-[#FCA5A5]">
-                    <XCircle className="h-3.5 w-3.5" />
-                    Disputed / Objections ({disagreeCount} Disagreed)
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 text-xs font-semibold text-[#92400E] border border-[#FDE68A]">
-                    <Clock className="h-3.5 w-3.5" />
-                    Under Review ({agreeCount}/3 Agreed)
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {/* Overall Decision Status Tag */}
+                  {isApproved ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F0EB] px-3 py-1 text-xs font-semibold text-[#1B4332] border border-[#B7DFCA]">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Approved (Unanimous 3/3)
+                    </span>
+                  ) : isRejected ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF2F2] px-3 py-1 text-xs font-semibold text-[#B91C1C] border border-[#FCA5A5]">
+                      <XCircle className="h-3.5 w-3.5" />
+                      Disputed / Objections ({disagreeCount} Disagreed)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 text-xs font-semibold text-[#92400E] border border-[#FDE68A]">
+                      <Clock className="h-3.5 w-3.5" />
+                      Under Review ({agreeCount}/3 Agreed)
+                    </span>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Are you sure you want to delete decision: "${d.title}"?`)) {
+                        deleteDecision.mutate(d.id);
+                      }
+                    }}
+                    title="Delete Decision"
+                    className="p-1.5 rounded-lg text-[#9498A0] hover:text-[#B91C1C] hover:bg-[#FEF2F2] transition active:scale-95"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Title & Description */}
-              <h3 className="mt-3 font-heading text-lg font-bold text-[#16181D]">
+              <h3 className="mt-4 font-heading text-xl font-bold text-[#16181D]">
                 {d.title}
               </h3>
-              <p className="mt-1.5 text-[15px] leading-relaxed text-[#62666F]">
+              <div className="mt-3 text-[14px] sm:text-[15px] leading-relaxed text-[#4A4E57] whitespace-pre-line font-normal">
                 {d.description}
-              </p>
+              </div>
 
               {/* 3 Co-Founders Stance Strip */}
               <div className="mt-5 border-t border-[#E8E6E1] pt-4">

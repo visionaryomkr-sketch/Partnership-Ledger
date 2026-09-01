@@ -520,6 +520,12 @@ export async function updateDecisionVote(decisionId, partnerName, voteType, note
   return data;
 }
 
+export async function deleteDecision(id) {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('decisions').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // -------------------------------------------------------------
 // APP SETTINGS & CHANGELOG
 // -------------------------------------------------------------
