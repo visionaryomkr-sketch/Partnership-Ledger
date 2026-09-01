@@ -1,0 +1,9 @@
+{
+  "short_name": "Equitas Ledger",
+  "name": "Equitas Ledger",
+  "icons": [],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "display": "standalone"
+}

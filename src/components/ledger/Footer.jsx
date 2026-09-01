@@ -1,0 +1,2 @@
+import React from "react";
+export default function Footer() { return <footer className="mx-auto mt-16 max-w-[1200px] border-t border-[#E8E6E1] px-6 py-6 text-center text-[13px] text-[#9498A0]">Partnership Ledger — a private accountability tool for Jyotish App. Last updated {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</footer>; }

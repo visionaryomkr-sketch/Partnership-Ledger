@@ -1,0 +1,4 @@
+import React from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
+export default function SlideOver({ open, title, children, onClose }) { return <AnimatePresence>{open && <><motion.button aria-label="Close panel" className="fixed inset-0 z-40 bg-black/40" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}/><motion.aside className="fixed inset-y-0 right-0 z-50 w-full max-w-lg overflow-y-auto bg-white p-6 shadow-2xl" initial={{x:"100%"}} animate={{x:0}} exit={{x:"100%"}} transition={{type:"spring",damping:28,stiffness:240}}><div className="mb-8 flex items-center justify-between"><h2 className="font-heading text-xl font-semibold">{title}</h2><button onClick={onClose} className="rounded-lg p-2 hover:bg-[#F5F4F2]"><X className="h-5 w-5"/></button></div>{children}</motion.aside></>}</AnimatePresence>; }
