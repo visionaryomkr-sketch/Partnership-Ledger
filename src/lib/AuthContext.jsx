@@ -176,6 +176,17 @@ export const AuthProvider = ({ children }) => {
 
     const loadPartnerProfile = async () => {
       try {
+        // Ensure user is recorded in public.profiles
+        if (user?.id) {
+          await supabase.from('profiles').upsert({
+            id: user.id,
+            email: user.email.toLowerCase().trim(),
+            full_name: user.user_metadata?.full_name || 'Partner',
+            role: 'partner',
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+        }
+
         const { data } = await supabase
           .from('partners')
           .select('*')
@@ -192,7 +203,7 @@ export const AuthProvider = ({ children }) => {
           });
         }
       } catch (err) {
-        console.warn('Error fetching partner profile:', err);
+        console.warn('Error fetching/syncing partner profile:', err);
       }
     };
 
