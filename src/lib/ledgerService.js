@@ -64,6 +64,7 @@ export async function fetchPartners() {
       email: p.email,
       role: p.role,
       color: p.color,
+      hourly_rate: Number(p.hourly_rate || (p.name.includes('OM') ? 1600 : 1000)),
       hours: Number(p.hours || 0),
       invested: Number(p.invested || 0),
       contribution: Number(p.contribution || 0),
@@ -531,7 +532,17 @@ export async function deleteDecision(id) {
 // -------------------------------------------------------------
 export async function fetchAppSettings() {
   await seedLedgerIfEmpty();
-  const defaultSettings = { hourly_rate: 1000, upfront_payment: 50000, updated_by: 'OM Kumar' };
+  const defaultRates = {
+    'OM Kumar': 1600,
+    'Shubham Jain': 1000,
+    'Ashwin Pillai': 1000,
+  };
+  const defaultSettings = {
+    hourly_rate: 1600,
+    hourly_rates: defaultRates,
+    upfront_payment: 50000,
+    updated_by: 'OM Kumar',
+  };
   if (!isSupabaseConfigured) return defaultSettings;
   try {
     const { data, error } = await supabase
@@ -541,8 +552,20 @@ export async function fetchAppSettings() {
       .maybeSingle();
 
     if (error || !data) return defaultSettings;
+
+    const savedRates = data.hourly_rates && typeof data.hourly_rates === 'object'
+      ? data.hourly_rates
+      : {};
+
+    const mergedRates = {
+      ...defaultRates,
+      ...savedRates,
+      'OM Kumar': Number(savedRates['OM Kumar'] || data.hourly_rate || 1600),
+    };
+
     return {
-      hourly_rate: Number(data.hourly_rate || 1000),
+      hourly_rate: Number(data.hourly_rate || mergedRates['OM Kumar'] || 1600),
+      hourly_rates: mergedRates,
       upfront_payment: Number(data.upfront_payment || 50000),
       updated_by: data.updated_by || 'OM Kumar',
       updated_at: data.updated_at,
@@ -576,7 +599,7 @@ export async function fetchChangeLog() {
   }
 }
 
-export async function updateHourlyRate(newRate, who = 'OM Kumar', oldRate = 1000) {
+export async function updatePartnerHourlyRate(partnerName, newRate, who = 'OM Kumar', oldRate = 1000) {
   const now = new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
@@ -585,28 +608,73 @@ export async function updateHourlyRate(newRate, who = 'OM Kumar', oldRate = 1000
     minute: '2-digit',
   });
 
-  if (!isSupabaseConfigured) {
-    return;
+  if (!isSupabaseConfigured) return;
+
+  // 1. Update in public.partners
+  try {
+    await supabase
+      .from('partners')
+      .update({ hourly_rate: Number(newRate) })
+      .ilike('name', `%${partnerName.trim()}%`);
+  } catch (err) {
+    console.warn('Could not update partners.hourly_rate directly:', err.message);
   }
 
-  // 1. Update app_settings
-  await supabase.from('app_settings').upsert({
-    id: 'general',
-    hourly_rate: Number(newRate),
-    updated_by: who,
-    updated_at: new Date().toISOString(),
-  });
+  // 2. Update app_settings (saves hourly_rates object and hourly_rate if OM)
+  try {
+    const { data: currentSettings } = await supabase
+      .from('app_settings')
+      .select('*')
+      .eq('id', 'general')
+      .maybeSingle();
 
-  // 2. Insert into settings_changelog
-  await supabase.from('settings_changelog').insert([
-    {
-      who,
-      field: 'Hourly Rate',
-      when_text: now,
-      old_value: `₹${Number(oldRate).toLocaleString('en-IN')}`,
-      next_value: `₹${Number(newRate).toLocaleString('en-IN')}`,
-    },
-  ]);
+    const existingRates = (currentSettings?.hourly_rates && typeof currentSettings.hourly_rates === 'object')
+      ? currentSettings.hourly_rates
+      : {
+          'OM Kumar': 1600,
+          'Shubham Jain': 1000,
+          'Ashwin Pillai': 1000,
+        };
+
+    const updatedRates = {
+      ...existingRates,
+      [partnerName]: Number(newRate),
+    };
+
+    const payload = {
+      id: 'general',
+      hourly_rates: updatedRates,
+      updated_by: who,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (partnerName.includes('OM')) {
+      payload.hourly_rate = Number(newRate);
+    }
+
+    await supabase.from('app_settings').upsert(payload);
+  } catch (err) {
+    console.warn('Could not update app_settings.hourly_rates:', err.message);
+  }
+
+  // 3. Insert into settings_changelog
+  try {
+    await supabase.from('settings_changelog').insert([
+      {
+        who,
+        field: `Hourly Rate (${partnerName})`,
+        when_text: now,
+        old_value: `₹${Number(oldRate).toLocaleString('en-IN')}`,
+        next_value: `₹${Number(newRate).toLocaleString('en-IN')}`,
+      },
+    ]);
+  } catch (logErr) {
+    console.warn('Could not insert into settings_changelog:', logErr.message);
+  }
+}
+
+export async function updateHourlyRate(newRate, who = 'OM Kumar', oldRate = 1000) {
+  return updatePartnerHourlyRate('OM Kumar', newRate, who, oldRate);
 }
 
 export async function updateProfitShares(sharesMap, who = 'OM Kumar', oldSharesSummary = '', newSharesSummary = '') {

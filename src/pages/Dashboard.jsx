@@ -16,6 +16,7 @@ import {
   useWorkEntries,
   useExpenseEntries,
   useRevenueEntries,
+  useAppSettings,
 } from "@/hooks/useLedger";
 
 const categoryColors = {
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const { data: workData, isLoading: wLoading } = useWorkEntries();
   const { data: expenseData, isLoading: eLoading } = useExpenseEntries();
   const { data: revenueData, isLoading: rLoading } = useRevenueEntries();
+  const { data: settingsData } = useAppSettings();
 
   const isLoading = pLoading || wLoading || eLoading || rLoading;
 
@@ -92,6 +94,8 @@ export default function Dashboard() {
 
   // Compute live partners data completely from real workEntries and real expenseEntries
   const livePartners = React.useMemo(() => {
+    const hourlyRates = settingsData?.hourly_rates || {};
+
     return partners.map((p) => {
       const partnerWork = workEntries.filter(
         (w) => (w.partner || "").toLowerCase().trim() === (p.name || "").toLowerCase().trim()
@@ -103,18 +107,25 @@ export default function Dashboard() {
       );
       const liveInvested = partnerExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
-      // Hourly rate default ₹1,000/hr + invested cash
-      const liveContribution = liveHours * 1000 + liveInvested;
+      // Hourly rate from partner profile, settings JSON, or fallback
+      const partnerRate = Number(
+        p.hourly_rate ||
+        hourlyRates[p.name] ||
+        (p.name.includes("OM") ? (settingsData?.hourly_rate || 1600) : 1000)
+      );
+
+      const liveContribution = liveHours * partnerRate + liveInvested;
 
       return {
         ...p,
+        hourly_rate: partnerRate,
         hours: liveHours,
         invested: liveInvested,
         contribution: liveContribution,
         entriesThisWeek: partnerWork.length,
       };
     });
-  }, [partners, workEntries, expenseEntries]);
+  }, [partners, workEntries, expenseEntries, settingsData]);
 
   if (isLoading) {
     return (

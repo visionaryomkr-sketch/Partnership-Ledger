@@ -20,6 +20,7 @@ import {
   fetchAppSettings,
   fetchChangeLog,
   updateHourlyRate,
+  updatePartnerHourlyRate,
   updateProfitShares,
   fetchDocuments,
   addDocument,
@@ -315,6 +316,30 @@ export function useUpdateHourlyRate() {
       toast({
         title: 'Hourly rate updated',
         description: 'New rate saved to Supabase and recorded in Change Log.',
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: 'Error saving hourly rate',
+        description: err.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useUpdatePartnerHourlyRate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ partnerName, newRate, who, oldRate }) =>
+      updatePartnerHourlyRate(partnerName, newRate, who, oldRate),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app_settings'] });
+      queryClient.invalidateQueries({ queryKey: ['partners'] });
+      queryClient.invalidateQueries({ queryKey: ['settings_changelog'] });
+      toast({
+        title: 'Hourly rate updated',
+        description: 'Your new hourly rate has been saved to the ledger.',
       });
     },
     onError: (err) => {

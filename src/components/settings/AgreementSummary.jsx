@@ -37,7 +37,10 @@ export default function AgreementSummary({ partners: propPartners, rate: propRat
           <span className="text-[#1B4332]">•</span> Profit split: <b>{split}</b>
         </li>
         <li className="flex gap-2">
-          <span className="text-[#1B4332]">•</span> Hourly rate for dev work: <b>₹{Number(rate).toLocaleString("en-IN")}/hr</b>
+          <span className="text-[#1B4332]">•</span> Agreed hourly rates:{" "}
+          <b>
+            OM ₹{Number(settingsData?.hourly_rates?.["OM Kumar"] || settingsData?.hourly_rate || 1600).toLocaleString("en-IN")}/hr · Shubham ₹{Number(settingsData?.hourly_rates?.["Shubham Jain"] || 1000).toLocaleString("en-IN")}/hr · Ashwin ₹{Number(settingsData?.hourly_rates?.["Ashwin Pillai"] || 1000).toLocaleString("en-IN")}/hr
+          </b>
         </li>
         <li className="flex gap-2">
           <span className="text-[#1B4332]">•</span> Upfront payment agreed: <b>₹{Number(upfront).toLocaleString("en-IN")} to OM</b>, adjustable against future share

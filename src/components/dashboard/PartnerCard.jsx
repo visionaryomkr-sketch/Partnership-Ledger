@@ -10,8 +10,21 @@ export default function PartnerCard({ p }) {
       <div className="mt-4 sm:mt-6 font-heading text-3xl sm:text-[40px] font-bold leading-none"><CountUp value={p.contribution} prefix="₹" /></div>
       <p className="mt-2 text-[13px] text-[#9498A0]">Total equivalent contribution</p>
       <div className="mt-5 sm:mt-6 grid grid-cols-2 border-t border-[#E8E6E1] pt-4">
-        <button onClick={go} className="text-left"><span className="block text-xs text-[#9498A0]">Hours Logged</span><b className="font-heading tabular-nums">{p.hours}h</b></button>
-        <div><span className="block text-xs text-[#9498A0]">₹ Invested</span><b className="font-heading tabular-nums">₹{p.invested.toLocaleString("en-IN")}</b></div>
+        <button onClick={go} className="text-left">
+          <span className="block text-xs text-[#9498A0]">Hours Logged</span>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <b className="font-heading tabular-nums text-base sm:text-lg">{p.hours}h</b>
+            {p.hourly_rate ? (
+              <span className="text-[11px] font-medium text-[#62666F]">
+                (@₹{Number(p.hourly_rate).toLocaleString("en-IN")}/h)
+              </span>
+            ) : null}
+          </div>
+        </button>
+        <div>
+          <span className="block text-xs text-[#9498A0]">₹ Invested</span>
+          <b className="font-heading tabular-nums text-base sm:text-lg">₹{p.invested.toLocaleString("en-IN")}</b>
+        </div>
       </div>
       <p className="mt-4 border-t border-[#E8E6E1] pt-3 text-xs text-[#9498A0]">Last active: {p.lastActive} · {p.entriesThisWeek} {p.entriesThisWeek === 1 ? "entry" : "entries"} this week</p>
     </article>
