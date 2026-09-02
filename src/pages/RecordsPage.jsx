@@ -27,6 +27,8 @@ export default function RecordsPage({ type, title, description, initial }) {
   const [partner, setPartner] = useState(queryPartner || "All partners");
   const [category, setCategory] = useState("All categories");
   const [statusFilter, setStatusFilter] = useState("All statuses");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [weeklyView, setWeeklyView] = useState(false);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState(null);
@@ -55,9 +57,23 @@ export default function RecordsPage({ type, title, description, initial }) {
   if (type === "revenue" && revenueQuery.data) rows = revenueQuery.data;
 
   let shown = rows;
-  if (partner !== "All partners") shown = shown.filter((r) => r.partner === partner);
-  if (type !== "revenue" && category !== "All categories") shown = shown.filter((r) => r.category === category);
-  if (type === "expense" && statusFilter !== "All statuses") shown = shown.filter((r) => r.status === statusFilter);
+  if (partner !== "All partners") {
+    shown = shown.filter(
+      (r) => (r.partner || "").toLowerCase().trim() === partner.toLowerCase().trim()
+    );
+  }
+  if (type !== "revenue" && category !== "All categories") {
+    shown = shown.filter((r) => r.category === category);
+  }
+  if (type === "expense" && statusFilter !== "All statuses") {
+    shown = shown.filter((r) => r.status === statusFilter);
+  }
+  if (startDate) {
+    shown = shown.filter((r) => (r.date || "") >= startDate);
+  }
+  if (endDate) {
+    shown = shown.filter((r) => (r.date || "") <= endDate);
+  }
   shown = [...shown].sort((a, b) => b.date.localeCompare(a.date));
 
   const save = async (form) => {
@@ -122,7 +138,7 @@ export default function RecordsPage({ type, title, description, initial }) {
           <div className="mb-6">
             {type === "work" && (
               <WorkLogSummary
-                rows={rows}
+                rows={shown}
                 category={category}
                 setCategory={setCategory}
                 weeklyView={weeklyView}
@@ -131,14 +147,22 @@ export default function RecordsPage({ type, title, description, initial }) {
             )}
             {type === "expense" && (
               <ExpenseSummary
-                rows={rows}
+                rows={shown}
                 statusFilter={statusFilter}
                 setStatusFilter={setStatusFilter}
               />
             )}
-            {type === "revenue" && <RevenueSummary rows={rows} />}
+            {type === "revenue" && <RevenueSummary rows={shown} />}
           </div>
-          <Filters partner={partner} setPartner={setPartner} showCategory={false} />
+          <Filters
+            partner={partner}
+            setPartner={setPartner}
+            showCategory={false}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+          />
           {shown.length ? (
             weeklyView && type === "work" ? (
               <WeeklyGroupedTable rows={shown} onNote={setNote} />

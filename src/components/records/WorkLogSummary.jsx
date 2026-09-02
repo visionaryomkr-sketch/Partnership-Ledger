@@ -83,29 +83,51 @@ export default function WorkLogSummary({
 
         {/* Real Dynamic Hours by Partner */}
         <div className="rounded-2xl border border-[#E8E6E1] bg-white p-5 shadow-sm flex flex-col justify-between">
-          <p className="text-[13px] font-medium uppercase tracking-wide text-[#9498A0]">
-            Hours by Partner
-          </p>
-          <div className="mt-2 flex h-10 items-end gap-2.5">
-            {partnerHoursMap.map((p) => (
-              <div key={p.id} className="flex-1 flex flex-col items-center" title={`${p.name}: ${p.hours}h`}>
-                <div className="w-full flex items-end h-8">
+          <div className="flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#9498A0]">
+              Hours by Partner
+            </p>
+            <span className="text-[11px] font-semibold text-[#1B4332] bg-[#E8F0EB] px-2 py-0.5 rounded-full border border-[#B7DFCA]">
+              {totalHours}h Total
+            </span>
+          </div>
+
+          <div className="mt-2 pt-2">
+            <div className="flex h-12 items-end gap-3 px-1">
+              {partnerHoursMap.map((p) => {
+                const pct = maxHours > 0 && p.hours > 0 ? (p.hours / maxHours) * 100 : 0;
+                // Generous headroom: capped at 80% so it never collides with header text
+                const barHeight = p.hours > 0 ? Math.max(Math.min(pct * 0.8, 80), 12) : 6;
+
+                return (
                   <div
-                    className="w-full rounded-t transition-all duration-700"
-                    style={{
-                      height: p.hours > 0 ? `${Math.max((p.hours / maxHours) * 100, 10)}%` : "4px",
-                      backgroundColor: p.color || "#4A5FE8",
-                      opacity: p.hours > 0 ? 1 : 0.25,
-                      minHeight: "4px",
-                    }}
-                  />
-                </div>
-                <div className="mt-1 flex items-center justify-between w-full text-[10px] sm:text-[11px] font-medium text-[#62666F]">
-                  <span className="truncate">{p.name.split(" ")[0]}</span>
-                  <span className="font-semibold tabular-nums text-[#16181D]">{p.hours}h</span>
-                </div>
-              </div>
-            ))}
+                    key={p.id}
+                    className="flex-1 flex flex-col items-center group cursor-pointer"
+                    title={`${p.name}: ${p.hours}h`}
+                  >
+                    <div className="w-full flex items-end justify-center h-10">
+                      <div
+                        className="w-full max-w-[36px] rounded-t-md transition-all duration-700 shadow-2xs"
+                        style={{
+                          height: `${barHeight}%`,
+                          backgroundColor: p.color || "#4A5FE8",
+                          opacity: p.hours > 0 ? 1 : 0.25,
+                          minHeight: "4px",
+                        }}
+                      />
+                    </div>
+                    <div className="mt-1.5 flex flex-col items-center leading-none text-center">
+                      <span className="text-[11px] font-bold tabular-nums text-[#16181D]">
+                        {p.hours}h
+                      </span>
+                      <span className="text-[10px] text-[#9498A0] font-medium truncate mt-0.5">
+                        {p.name.split(" ")[0]}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
