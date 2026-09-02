@@ -21,10 +21,21 @@ export default function PartnerCard({ p }) {
             ) : null}
           </div>
         </button>
-        <div>
-          <span className="block text-xs text-[#9498A0]">₹ Invested</span>
-          <b className="font-heading tabular-nums text-base sm:text-lg">₹{p.invested.toLocaleString("en-IN")}</b>
-        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            nav(`/expenses?partner=${encodeURIComponent(p.name)}`);
+          }}
+          className="text-left group cursor-pointer"
+          title={`View or add expenses for ${p.name}`}
+        >
+          <span className="block text-xs text-[#9498A0] group-hover:text-[#1B4332] transition">
+            ₹ Invested →
+          </span>
+          <b className="font-heading tabular-nums text-base sm:text-lg text-[#16181D]">
+            ₹{p.invested.toLocaleString("en-IN")}
+          </b>
+        </button>
       </div>
       <p className="mt-4 border-t border-[#E8E6E1] pt-3 text-xs text-[#9498A0]">Last active: {p.lastActive} · {p.entriesThisWeek} {p.entriesThisWeek === 1 ? "entry" : "entries"} this week</p>
     </article>
