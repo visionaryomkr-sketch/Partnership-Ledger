@@ -224,8 +224,8 @@ export default function Decisions() {
 
                   <button
                     onClick={() => {
-                      if (window.confirm(`Are you sure you want to delete decision: "${d.title}"?`)) {
-                        deleteDecision.mutate(d.id);
+                      if (window.confirm(`Are you sure you want to delete decision: "${d.title}"? (A permanent snapshot will be preserved in Audit History)`)) {
+                        deleteDecision.mutate({ id: d.id, actor: activeFounder });
                       }
                     }}
                     title="Delete Decision"

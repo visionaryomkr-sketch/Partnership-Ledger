@@ -22,6 +22,7 @@ import Decisions from '@/pages/Decisions';
 import Milestones from '@/pages/Milestones';
 import Documents from '@/pages/Documents';
 import Roles from '@/pages/Roles';
+import History from '@/pages/History';
 import Layout from '@/components/ledger/Layout';
 
 const AuthenticatedApp = () => {
@@ -73,6 +74,7 @@ const AuthenticatedApp = () => {
           <Route path="/milestones" element={<Milestones />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/roles" element={<Roles />} />
+          <Route path="/history" element={<History />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

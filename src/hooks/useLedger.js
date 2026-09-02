@@ -30,6 +30,8 @@ import {
   addRole,
   fetchTimeline,
   addTimelineEvent,
+  fetchAuditHistory,
+  logAuditEvent,
 } from '@/lib/ledgerService';
 
 // PARTNERS
@@ -272,12 +274,17 @@ export function useVoteDecision() {
 export function useDeleteDecision() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id) => deleteDecision(id),
+    mutationFn: (variables) => {
+      const id = typeof variables === "object" ? variables.id : variables;
+      const actor = typeof variables === "object" ? variables.actor : "OM Kumar";
+      return deleteDecision(id, actor);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['decisions'] });
+      queryClient.invalidateQueries({ queryKey: ["decisions"] });
+      queryClient.invalidateQueries({ queryKey: ["audit_history"] });
       toast({
-        title: 'Decision deleted',
-        description: 'The decision record has been permanently removed from the ledger.',
+        title: "Decision deleted",
+        description: "Record removed and archived in the Audit History.",
       });
     },
     onError: (err) => {
@@ -489,6 +496,7 @@ export function useAddTimelineEvent() {
     mutationFn: (event) => addTimelineEvent(event),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partnership_timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['audit_history'] });
       toast({
         title: 'Timeline event added',
         description: 'Added to partnership chronology.',
@@ -501,6 +509,14 @@ export function useAddTimelineEvent() {
         variant: 'destructive',
       });
     },
+  });
+}
+
+// AUDIT HISTORY
+export function useAuditHistory() {
+  return useQuery({
+    queryKey: ['audit_history'],
+    queryFn: fetchAuditHistory,
   });
 }
 

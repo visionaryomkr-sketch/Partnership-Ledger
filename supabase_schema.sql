@@ -243,6 +243,22 @@ values
   ('Aug 28, 2026', 'Platform development completed', 'All technical systems built, tested, and deployment-ready.'),
   ('Sep 1, 2026', '₹50,000 upfront payment proposed', 'Fair acknowledgment of completed verifiable work ahead of revenue.')
 on conflict do nothing;
+-- =======================================================
+-- 10. AUDIT HISTORY TABLE (Permanent Audit Trail)
+-- =======================================================
+create table if not exists public.audit_history (
+  id bigserial primary key,
+  action text not null check (action in ('CREATED', 'UPDATED', 'DELETED')),
+  entity_type text not null, -- 'Decision', 'Work Entry', 'Expense', 'Milestone', 'Document', 'Setting', 'Profit Share'
+  entity_id text,
+  actor text not null default 'OM Kumar',
+  title text not null,
+  details jsonb default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
 
-
-
+alter table public.audit_history enable row level security;
+create policy "Authenticated users can read audit history" on public.audit_history for select to authenticated using (true);
+create policy "Authenticated users can insert audit history" on public.audit_history for insert to authenticated with check (true);
+create policy "No direct updates to audit history" on public.audit_history for update to authenticated using (false);
+create policy "No direct deletes from audit history" on public.audit_history for delete to authenticated using (false);

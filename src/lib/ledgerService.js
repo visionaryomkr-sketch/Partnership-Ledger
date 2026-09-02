@@ -145,6 +145,16 @@ export async function addWorkEntry(entry) {
     .single();
 
   if (error) throw error;
+
+  await logAuditEvent({
+    action: 'CREATED',
+    entityType: 'Work Entry',
+    entityId: String(data.id),
+    actor: entry.partner || 'OM Kumar',
+    title: `${entry.partner} logged ${entry.hours}h: ${entry.title}`,
+    details: data,
+  });
+
   return data;
 }
 
@@ -205,6 +215,16 @@ export async function addExpenseEntry(entry) {
     .single();
 
   if (error) throw error;
+
+  await logAuditEvent({
+    action: 'CREATED',
+    entityType: 'Expense',
+    entityId: String(data.id),
+    actor: entry.partner || 'OM Kumar',
+    title: `${entry.partner} invested ₹${Number(entry.amount).toLocaleString('en-IN')}: ${entry.description || entry.category}`,
+    details: data,
+  });
+
   return data;
 }
 
@@ -222,6 +242,15 @@ export async function updateExpenseStatus(id, newStatus) {
     .eq('id', id);
 
   if (error) throw error;
+
+  await logAuditEvent({
+    action: 'UPDATED',
+    entityType: 'Expense',
+    entityId: String(id),
+    actor: 'Partner',
+    title: `Expense #${id} status changed to ${newStatus}`,
+    details: { id, newStatus, date: now },
+  });
 }
 
 // -------------------------------------------------------------
@@ -276,6 +305,16 @@ export async function addRevenueEntry(entry) {
     .single();
 
   if (error) throw error;
+
+  await logAuditEvent({
+    action: 'CREATED',
+    entityType: 'Revenue',
+    entityId: String(data.id),
+    actor: entry.partner || 'OM Kumar',
+    title: `${entry.partner} recorded revenue of ₹${Number(entry.amount).toLocaleString('en-IN')} (${entry.source})`,
+    details: data,
+  });
+
   return data;
 }
 
@@ -354,8 +393,29 @@ export async function updateMilestoneStatus(id, newStatus) {
   return data;
 }
 
-export async function deleteMilestone(id) {
+export async function deleteMilestone(id, actor = 'OM Kumar') {
   if (!isSupabaseConfigured) return;
+  try {
+    const { data: snapshot } = await supabase
+      .from('milestones')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (snapshot) {
+      await logAuditEvent({
+        action: 'DELETED',
+        entityType: 'Milestone',
+        entityId: String(id),
+        actor,
+        title: snapshot.title || 'Milestone',
+        details: snapshot,
+      });
+    }
+  } catch (err) {
+    console.warn('Could not archive milestone snapshot:', err.message);
+  }
+
   const { error } = await supabase.from('milestones').delete().eq('id', id);
   if (error) throw error;
 }
@@ -454,6 +514,16 @@ export async function addDecision(decision) {
     .single();
 
   if (error) throw error;
+
+  await logAuditEvent({
+    action: 'CREATED',
+    entityType: 'Decision',
+    entityId: String(data.id),
+    actor: proposer,
+    title: `Decision Proposed: ${decision.title}`,
+    details: data,
+  });
+
   return data;
 }
 
@@ -521,8 +591,29 @@ export async function updateDecisionVote(decisionId, partnerName, voteType, note
   return data;
 }
 
-export async function deleteDecision(id) {
+export async function deleteDecision(id, actor = 'OM Kumar') {
   if (!isSupabaseConfigured) return;
+  try {
+    const { data: snapshot } = await supabase
+      .from('decisions')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (snapshot) {
+      await logAuditEvent({
+        action: 'DELETED',
+        entityType: 'Decision',
+        entityId: String(id),
+        actor,
+        title: snapshot.title || 'Decision',
+        details: snapshot,
+      });
+    }
+  } catch (err) {
+    console.warn('Could not archive decision snapshot:', err.message);
+  }
+
   const { error } = await supabase.from('decisions').delete().eq('id', id);
   if (error) throw error;
 }
@@ -671,6 +762,16 @@ export async function updatePartnerHourlyRate(partnerName, newRate, who = 'OM Ku
   } catch (logErr) {
     console.warn('Could not insert into settings_changelog:', logErr.message);
   }
+
+  // Also log to permanent audit trail
+  await logAuditEvent({
+    action: 'UPDATED',
+    entityType: 'Settings',
+    entityId: `hourly_rate_${partnerName}`,
+    actor: who,
+    title: `Hourly Rate for ${partnerName} updated: ₹${Number(oldRate).toLocaleString('en-IN')} → ₹${Number(newRate).toLocaleString('en-IN')}`,
+    details: { partnerName, oldRate, newRate, who },
+  });
 }
 
 export async function updateHourlyRate(newRate, who = 'OM Kumar', oldRate = 1000) {
@@ -708,6 +809,16 @@ export async function updateProfitShares(sharesMap, who = 'OM Kumar', oldSharesS
       next_value: newSharesSummary || Object.values(sharesMap).join(' / '),
     },
   ]);
+
+  // 3. Log to permanent audit trail
+  await logAuditEvent({
+    action: 'UPDATED',
+    entityType: 'Settings',
+    entityId: 'profit_share',
+    actor: who,
+    title: `Profit Share split updated: ${newSharesSummary || Object.values(sharesMap).join(' / ')}`,
+    details: { oldSharesSummary, newSharesSummary, sharesMap, who },
+  });
 }
 
 // -------------------------------------------------------------
@@ -804,8 +915,29 @@ export async function addDocument(doc, file = null) {
   };
 }
 
-export async function deleteDocument(id) {
+export async function deleteDocument(id, actor = 'OM Kumar') {
   if (!isSupabaseConfigured) return;
+  try {
+    const { data: snapshot } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (snapshot) {
+      await logAuditEvent({
+        action: 'DELETED',
+        entityType: 'Document',
+        entityId: String(id),
+        actor,
+        title: snapshot.name || 'Document',
+        details: snapshot,
+      });
+    }
+  } catch (err) {
+    console.warn('Could not archive document snapshot:', err.message);
+  }
+
   const { error } = await supabase.from('documents').delete().eq('id', id);
   if (error) throw error;
 }
@@ -919,5 +1051,54 @@ export async function addTimelineEvent(event) {
   return data;
 }
 
+// -------------------------------------------------------------
+// AUDIT HISTORY (Permanent Activity Log)
+// -------------------------------------------------------------
+export async function logAuditEvent({
+  action,
+  entityType,
+  entityId = null,
+  actor = 'OM Kumar',
+  title = '',
+  details = {},
+}) {
+  if (!isSupabaseConfigured) return;
+  try {
+    const payload = {
+      action,
+      entity_type: entityType,
+      entity_id: entityId ? String(entityId) : null,
+      actor,
+      title,
+      details,
+    };
+    await supabase.from('audit_history').insert([payload]);
+  } catch (err) {
+    console.warn('[logAuditEvent] Error inserting audit log:', err.message);
+  }
+}
 
+export async function fetchAuditHistory() {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const { data, error } = await supabase
+      .from('audit_history')
+      .select('*')
+      .order('created_at', { ascending: false });
 
+    if (error || !data) return [];
+    return data.map((item) => ({
+      id: item.id,
+      action: item.action,
+      entityType: item.entity_type,
+      entityId: item.entity_id,
+      actor: item.actor,
+      title: item.title,
+      details: item.details || {},
+      createdAt: item.created_at,
+    }));
+  } catch (err) {
+    console.warn('[fetchAuditHistory] Error:', err.message);
+    return [];
+  }
+}

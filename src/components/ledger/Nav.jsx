@@ -15,6 +15,7 @@ import {
   Users,
   Settings,
   Info,
+  History,
   X,
   LogOut,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const primary = [
 ];
 
 const secondary = [
+  ["/history", "Audit History", History],
   ["/equity", "Equity", PieChart],
   ["/decisions", "Decisions", Gavel],
   ["/milestones", "Milestones", Flag],
