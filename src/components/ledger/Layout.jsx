@@ -5,8 +5,10 @@ import { useAuth } from "@/lib/AuthContext";
 import { DesktopNav, MobileBottomNav } from "@/components/ledger/Nav";
 import Footer from "@/components/ledger/Footer";
 import { LogOut } from "lucide-react";
+import { useSessionTracker } from "@/hooks/useSessionTracker";
 
 export default function Layout() {
+  useSessionTracker();
   const location = useLocation();
   const { user, currentPartner, logout } = useAuth();
   const displayName = currentPartner?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Partner";

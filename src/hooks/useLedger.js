@@ -32,6 +32,7 @@ import {
   addTimelineEvent,
   fetchAuditHistory,
   logAuditEvent,
+  fetchFounderActivity,
 } from '@/lib/ledgerService';
 
 // PARTNERS
@@ -517,6 +518,15 @@ export function useAuditHistory() {
   return useQuery({
     queryKey: ['audit_history'],
     queryFn: fetchAuditHistory,
+  });
+}
+
+// FOUNDER ACTIVITY & PRESENCE
+export function useFounderActivity() {
+  return useQuery({
+    queryKey: ['founder_activity'],
+    queryFn: fetchFounderActivity,
+    refetchInterval: 15000, // Auto-refresh presence every 15s
   });
 }
 

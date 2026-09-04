@@ -47,6 +47,31 @@ export async function seedLedgerIfEmpty() {
 }
 
 // -------------------------------------------------------------
+export function formatLastSeenTime(isoString) {
+  if (!isoString) return 'Never logged in';
+  const timestamp = new Date(isoString).getTime();
+  if (isNaN(timestamp)) return isoString;
+
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMin < 3) return 'Online now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHours < 24) {
+    const timeStr = new Date(timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    return `Today, ${timeStr}`;
+  }
+  if (diffDays === 1) {
+    const timeStr = new Date(timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    return `Yesterday, ${timeStr}`;
+  }
+  return `${diffDays} days ago`;
+}
+
 // PARTNERS
 // -------------------------------------------------------------
 export async function fetchPartners() {
@@ -58,22 +83,33 @@ export async function fetchPartners() {
       .order('name');
     if (error || !data || data.length === 0) return mockPartners;
 
-    return data.map((p) => ({
-      id: p.id,
-      name: p.name,
-      email: p.email,
-      role: p.role,
-      color: p.color,
-      hourly_rate: Number(p.hourly_rate || (p.name.includes('OM') ? 1600 : 1000)),
-      hours: Number(p.hours || 0),
-      invested: Number(p.invested || 0),
-      contribution: Number(p.contribution || 0),
-      net: Number(p.net || 0),
-      share: Number(p.share || 0),
-      detail: p.detail,
-      lastActive: p.last_active || 'Today',
-      entriesThisWeek: Number(p.entries_this_week || 0),
-    }));
+    return data.map((p) => {
+      const isOnline = p.last_seen_at
+        ? (Date.now() - new Date(p.last_seen_at).getTime() < 180000)
+        : false;
+      const realLastActive = p.last_seen_at
+        ? formatLastSeenTime(p.last_seen_at)
+        : (p.last_active || 'Never logged in');
+
+      return {
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        role: p.role,
+        color: p.color,
+        hourly_rate: Number(p.hourly_rate || (p.name.includes('OM') ? 1600 : 1000)),
+        hours: Number(p.hours || 0),
+        invested: Number(p.invested || 0),
+        contribution: Number(p.contribution || 0),
+        net: Number(p.net || 0),
+        share: Number(p.share || 0),
+        detail: p.detail,
+        lastActive: realLastActive,
+        lastSeenAt: p.last_seen_at,
+        isOnline,
+        entriesThisWeek: Number(p.entries_this_week || 0),
+      };
+    });
   } catch {
     return mockPartners;
   }
@@ -1102,3 +1138,178 @@ export async function fetchAuditHistory() {
     return [];
   }
 }
+
+// -------------------------------------------------------------
+// FOUNDER SESSIONS & REAL-TIME ACTIVITY TRACKING
+// -------------------------------------------------------------
+export async function recordSessionStart({ sessionId, partnerName, partnerEmail, deviceInfo, initialPage }) {
+  if (!isSupabaseConfigured || !partnerName) return;
+  const now = new Date().toISOString();
+  try {
+    const { data: existing } = await supabase
+      .from('founder_sessions')
+      .select('id, pages_viewed')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from('founder_sessions').insert([
+        {
+          session_id: sessionId,
+          partner_name: partnerName,
+          partner_email: partnerEmail || null,
+          login_at: now,
+          last_heartbeat: now,
+          duration_seconds: 0,
+          pages_viewed: [initialPage || '/'],
+          device_info: deviceInfo || 'Web Browser',
+          is_online: true,
+        },
+      ]);
+    }
+
+    // Also update partner's last_seen_at
+    await supabase
+      .from('partners')
+      .update({ last_seen_at: now, last_active: 'Today' })
+      .ilike('name', `%${partnerName.trim()}%`);
+  } catch (err) {
+    console.warn('[recordSessionStart] Error:', err.message);
+  }
+}
+
+export async function sendSessionHeartbeat({ sessionId, partnerName, durationSeconds, currentPath }) {
+  if (!isSupabaseConfigured || !sessionId) return;
+  const now = new Date().toISOString();
+  try {
+    const { data: sessionData } = await supabase
+      .from('founder_sessions')
+      .select('pages_viewed')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    let pages = Array.isArray(sessionData?.pages_viewed) ? [...sessionData.pages_viewed] : [];
+    if (currentPath && !pages.includes(currentPath)) {
+      pages.push(currentPath);
+    }
+
+    await supabase
+      .from('founder_sessions')
+      .update({
+        last_heartbeat: now,
+        duration_seconds: durationSeconds,
+        pages_viewed: pages,
+        is_online: true,
+      })
+      .eq('session_id', sessionId);
+
+    if (partnerName) {
+      await supabase
+        .from('partners')
+        .update({ last_seen_at: now, last_active: 'Today' })
+        .ilike('name', `%${partnerName.trim()}%`);
+    }
+  } catch (err) {
+    console.warn('[sendSessionHeartbeat] Error:', err.message);
+  }
+}
+
+export async function fetchFounderActivity() {
+  const defaultPartners = ['OM Kumar', 'Shubham Jain', 'Ashwin Pillai'];
+  const result = {
+    partnersStats: {},
+    recentSessions: [],
+  };
+
+  defaultPartners.forEach((name) => {
+    result.partnersStats[name] = {
+      name,
+      isOnline: false,
+      lastSeen: 'Never logged in',
+      lastSeenAt: null,
+      timeSpentTodaySeconds: 0,
+      totalTimeSpentSeconds: 0,
+      sessionCount: 0,
+      latestDevice: 'Unknown',
+      pagesVisited: [],
+    };
+  });
+
+  if (!isSupabaseConfigured) return result;
+
+  try {
+    // 1. Fetch recent sessions
+    const { data: sessions, error } = await supabase
+      .from('founder_sessions')
+      .select('*')
+      .order('last_heartbeat', { ascending: false })
+      .limit(60);
+
+    if (error || !sessions) return result;
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    sessions.forEach((s) => {
+      const pName =
+        defaultPartners.find(
+          (n) => s.partner_name && s.partner_name.toLowerCase().includes(n.split(' ')[0].toLowerCase())
+        ) || s.partner_name;
+
+      if (!result.partnersStats[pName]) {
+        result.partnersStats[pName] = {
+          name: pName,
+          isOnline: false,
+          lastSeen: 'Never logged in',
+          lastSeenAt: null,
+          timeSpentTodaySeconds: 0,
+          totalTimeSpentSeconds: 0,
+          sessionCount: 0,
+          latestDevice: 'Unknown',
+          pagesVisited: [],
+        };
+      }
+
+      const stat = result.partnersStats[pName];
+      stat.sessionCount += 1;
+      stat.totalTimeSpentSeconds += s.duration_seconds || 0;
+
+      const loginDate = new Date(s.login_at);
+      if (loginDate >= startOfToday) {
+        stat.timeSpentTodaySeconds += s.duration_seconds || 0;
+      }
+
+      if (!stat.lastSeenAt || new Date(s.last_heartbeat) > new Date(stat.lastSeenAt)) {
+        stat.lastSeenAt = s.last_heartbeat;
+        stat.latestDevice = s.device_info || 'Browser';
+        const isOnline = Date.now() - new Date(s.last_heartbeat).getTime() < 180000;
+        stat.isOnline = isOnline;
+        stat.lastSeen = formatLastSeenTime(s.last_heartbeat);
+      }
+
+      if (Array.isArray(s.pages_viewed)) {
+        s.pages_viewed.forEach((p) => {
+          if (!stat.pagesVisited.includes(p)) stat.pagesVisited.push(p);
+        });
+      }
+    });
+
+    result.recentSessions = sessions.map((s) => ({
+      id: s.id,
+      sessionId: s.session_id,
+      partnerName: s.partner_name,
+      loginAt: s.login_at,
+      lastHeartbeat: s.last_heartbeat,
+      durationSeconds: s.duration_seconds || 0,
+      pagesViewed: Array.isArray(s.pages_viewed) ? s.pages_viewed : [],
+      deviceInfo: s.device_info || 'Browser',
+      isOnline: Date.now() - new Date(s.last_heartbeat).getTime() < 180000,
+    }));
+
+    return result;
+  } catch (err) {
+    console.warn('[fetchFounderActivity] Error:', err.message);
+    return result;
+  }
+}
+

@@ -262,3 +262,30 @@ create policy "Authenticated users can read audit history" on public.audit_histo
 create policy "Authenticated users can insert audit history" on public.audit_history for insert to authenticated with check (true);
 create policy "No direct updates to audit history" on public.audit_history for update to authenticated using (false);
 create policy "No direct deletes from audit history" on public.audit_history for delete to authenticated using (false);
+
+-- =======================================================
+-- 11. FOUNDER SESSIONS & ACTIVITY TRACKER
+-- =======================================================
+create table if not exists public.founder_sessions (
+  id bigserial primary key,
+  session_id text not null,
+  partner_name text not null,
+  partner_email text,
+  login_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  last_heartbeat timestamp with time zone default timezone('utc'::text, now()) not null,
+  duration_seconds integer default 0,
+  pages_viewed jsonb default '[]'::jsonb,
+  device_info text,
+  is_online boolean default true,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_founder_sessions_partner on public.founder_sessions(partner_name, last_heartbeat desc);
+
+-- Add real activity tracking columns to public.partners
+alter table public.partners add column if not exists last_seen_at timestamp with time zone;
+alter table public.partners add column if not exists total_time_spent_seconds integer default 0;
+
+alter table public.founder_sessions enable row level security;
+create policy "Authenticated users can read founder sessions" on public.founder_sessions for select to authenticated using (true);
+create policy "Authenticated users can insert/update founder sessions" on public.founder_sessions for all to authenticated using (true);

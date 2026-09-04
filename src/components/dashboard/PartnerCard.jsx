@@ -37,7 +37,22 @@ export default function PartnerCard({ p }) {
           </b>
         </button>
       </div>
-      <p className="mt-4 border-t border-[#E8E6E1] pt-3 text-xs text-[#9498A0]">Last active: {p.lastActive} · {p.entriesThisWeek} {p.entriesThisWeek === 1 ? "entry" : "entries"} this week</p>
+      <div className="mt-4 border-t border-[#E8E6E1] pt-3 flex items-center justify-between text-xs text-[#9498A0]">
+        <div className="flex items-center gap-1.5">
+          {p.isOnline ? (
+            <span className="inline-flex items-center gap-1 font-semibold text-[#1B4332]">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1B4332] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1B4332]"></span>
+              </span>
+              Online now
+            </span>
+          ) : (
+            <span>Last active: {p.lastActive}</span>
+          )}
+        </div>
+        <span>{p.entriesThisWeek} {p.entriesThisWeek === 1 ? "entry" : "entries"} this week</span>
+      </div>
     </article>
   );
 }
